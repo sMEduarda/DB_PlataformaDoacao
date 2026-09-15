@@ -1,0 +1,213 @@
+CREATE DATABASE PlataformaDoacao;
+GO
+USE PlataformaDoacao;
+GO
+
+/* 1. TABELA USUARIO */
+
+CREATE TABLE Usuario (
+    IdUsuario INT IDENTITY(1,1) PRIMARY KEY,
+    Nome NVARCHAR(100) NOT NULL,
+    Email NVARCHAR(150) NOT NULL UNIQUE,
+    Senha NVARCHAR(255) NOT NULL,
+    TipoUsuario NVARCHAR(20) NOT NULL,
+
+    CONSTRAINT CK_Usuario_Tipo
+        CHECK (TipoUsuario IN ('ESTABELECIMENTO', 'INSTITUICAO'))
+);
+GO
+
+
+/* 2. TABELA ESTABELECIMENTO */
+
+CREATE TABLE Estabelecimento (
+    IdEstabelecimento INT IDENTITY(1,1) PRIMARY KEY,
+    IdUsuario INT NOT NULL,
+    NomeEstabelecimento NVARCHAR(150) NOT NULL,
+    CNPJ NVARCHAR(18) NULL,
+    Endereco NVARCHAR(200) NULL,
+    Telefone NVARCHAR(20) NULL,
+
+    CONSTRAINT FK_Estabelecimento_Usuario
+        FOREIGN KEY (IdUsuario)
+        REFERENCES Usuario(IdUsuario)
+);
+GO
+
+
+/*3. TABELA INSTITUICAO */
+
+CREATE TABLE Instituicao (
+    IdInstituicao INT IDENTITY(1,1) PRIMARY KEY,
+    IdUsuario INT NOT NULL,
+    NomeInstituicao NVARCHAR(150) NOT NULL,
+    CNPJ NVARCHAR(18) NULL,
+    Endereco NVARCHAR(200) NULL,
+    Telefone NVARCHAR(20) NULL,
+
+    CONSTRAINT FK_Instituicao_Usuario
+        FOREIGN KEY (IdUsuario)
+        REFERENCES Usuario(IdUsuario)
+);
+GO
+
+
+/*  4. TABELA ALIMENTO */
+
+CREATE TABLE Alimento (
+    IdAlimento INT IDENTITY(1,1) PRIMARY KEY,
+    IdEstabelecimento INT NOT NULL,
+    TipoAlimento NVARCHAR(100) NOT NULL,
+    Quantidade DECIMAL(10,2) NOT NULL,
+    Unidade NVARCHAR(20) NOT NULL,
+    DataValidade DATE NOT NULL,
+    Disponibilidade BIT NOT NULL DEFAULT 1,
+    DataCadastro DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_Alimento_Estabelecimento
+        FOREIGN KEY (IdEstabelecimento)
+        REFERENCES Estabelecimento(IdEstabelecimento),
+
+    CONSTRAINT CK_Alimento_Quantidade
+        CHECK (Quantidade > 0)
+);
+GO
+
+
+/* 5. TABELA SOLICITACAO */
+
+CREATE TABLE Solicitacao (
+    IdSolicitacao INT IDENTITY(1,1) PRIMARY KEY,
+    IdAlimento INT NOT NULL,
+    IdInstituicao INT NOT NULL,
+    QuantidadeSolicitada DECIMAL(10,2) NOT NULL,
+    DataSolicitacao DATETIME2 NOT NULL DEFAULT GETDATE(),
+    StatusSolicitacao NVARCHAR(20) NOT NULL DEFAULT 'SOLICITADA',
+    DataResposta DATETIME2 NULL,
+
+    CONSTRAINT FK_Solicitacao_Alimento
+        FOREIGN KEY (IdAlimento)
+        REFERENCES Alimento(IdAlimento),
+
+    CONSTRAINT FK_Solicitacao_Instituicao
+        FOREIGN KEY (IdInstituicao)
+        REFERENCES Instituicao(IdInstituicao),
+
+    CONSTRAINT CK_Solicitacao_Quantidade
+        CHECK (QuantidadeSolicitada > 0),
+
+    CONSTRAINT CK_Solicitacao_Status
+        CHECK (
+            StatusSolicitacao IN
+            ('SOLICITADA', 'APROVADA', 'RECUSADA')
+        )
+);
+GO
+
+USE PlataformaDoacao;
+GO
+
+/* 6.USUARIOS DE TESTE */
+
+INSERT INTO Usuario
+    (Nome, Email, Senha, TipoUsuario)
+VALUES
+    ('Mercado Boa Esperança',
+     'mercado@teste.com',
+     '123456',
+     'ESTABELECIMENTO'),
+
+    ('Instituição Vida Nova',
+     'instituicao@teste.com',
+     '123456',
+     'INSTITUICAO');
+GO
+
+
+/* ESTABELECIMENTO DE TESTE */
+
+INSERT INTO Estabelecimento
+    (IdUsuario, NomeEstabelecimento, CNPJ, Endereco, Telefone)
+VALUES
+    (1,
+     'Mercado Boa Esperança',
+     '12.345.678/0001-90',
+     'Rua das Flores, 100',
+     '(24) 99999-9999');
+GO
+
+
+/* INSTITUICAO DE TESTE */
+
+INSERT INTO Instituicao
+    (IdUsuario, NomeInstituicao, CNPJ, Endereco, Telefone)
+VALUES
+    (2,
+     'Instituição Vida Nova',
+     '98.765.432/0001-10',
+     'Rua da Solidariedade, 200',
+     '(24) 98888-8888');
+GO
+
+
+/* ALIMENTOS DE TESTE */
+
+INSERT INTO Alimento
+    (IdEstabelecimento, TipoAlimento, Quantidade, Unidade, DataValidade)
+VALUES
+    (1, 'Arroz', 50.00, 'KG', '2026-10-20'),
+
+    (1, 'Feijão', 30.00, 'KG', '2026-11-15'),
+
+    (1, 'Macarrão', 20.00, 'KG', '2027-01-10');
+GO
+
+/* Consultar dados das tabelas */
+
+SELECT * FROM Usuario;
+GO
+
+SELECT * FROM Estabelecimento;
+GO
+
+SELECT * FROM Instituicao;
+GO
+
+SELECT * FROM Alimento;
+GO
+
+SELECT * FROM Solicitacao;
+GO
+/* teste 1 */
+
+SELECT
+    A.IdAlimento,
+    A.TipoAlimento,
+    A.Quantidade,
+    A.Unidade,
+    A.DataValidade,
+    E.NomeEstabelecimento
+FROM Alimento A
+INNER JOIN Estabelecimento E
+    ON A.IdEstabelecimento = E.IdEstabelecimento
+WHERE A.Disponibilidade = 1;
+
+
+INSERT INTO Solicitacao
+    (IdAlimento, IdInstituicao, QuantidadeSolicitada)
+VALUES
+    (1, 1, 10.00);
+GO
+
+SELECT
+    S.IdSolicitacao,
+    I.NomeInstituicao,
+    A.TipoAlimento,
+    S.QuantidadeSolicitada,
+    S.DataSolicitacao,
+    S.StatusSolicitacao
+FROM Solicitacao S
+INNER JOIN Instituicao I
+    ON S.IdInstituicao = I.IdInstituicao
+INNER JOIN Alimento A
+    ON S.IdAlimento = A.IdAlimento;
